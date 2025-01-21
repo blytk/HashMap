@@ -215,5 +215,5 @@ class LinkedList
       else
           nil
       end
-  end
+  end  
 end
