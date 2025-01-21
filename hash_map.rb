@@ -1,5 +1,3 @@
-
-
 # Project HashMap
 # Use the following snippet whenever you access a bucket through an index. We want to raise an error if we try to access an out-of-bounds index:
 #   raise IndexError if index.negative? || index >= @buckets.length
@@ -32,8 +30,12 @@ class HashMap
     def set(key, value)
         # hash the key to find the index
         hash_index = hash(key)
+
         # traverse the linked list on the bucket (index should point to the head)
         cursor = hash_array[hash_index]
+
+        # out of bounds error
+        raise IndexError if hash_index.negative? || hash_index >= @capacity
 
         # linked_list is empty? cursor should point at the linked_list ojbect (empty)
         if cursor.head == nil
@@ -66,7 +68,12 @@ class HashMap
     #* traverse(key) / traverse linked list, return cursor if key is found (pointing at node with desired key) / nil otherwise
     def traverse(key)
       hash_index = hash(key)
+
       cursor = hash_array[hash_index]
+
+      # out of bounds error
+      raise IndexError if hash_index.negative? || hash_index >= @capacity
+
       if cursor.head == nil
         return nil
       else
@@ -109,6 +116,7 @@ class HashMap
         # store value to return later
         node_value = traverse_result.value
         # access LL object.remove_node_at(index_where_node_value_is)
+        @number_of_keys -= 1
         hash_array[hash(key)].remove_at(find(node_value))
       end
     end
@@ -134,10 +142,46 @@ class HashMap
     def keys
       keys_array = []
       for i in 0...@capacity
-        hash_array[i]
+        if hash_array[i].head != nil
+          cursor = hash_array[i].head
+          while cursor != nil
+            keys_array << cursor.key
+            cursor = cursor.next_node
+          end
+        end
       end
+      keys_array
     end
-    
+
+    #9. #values returns an array containing all the values
+    def values
+      values_array = []
+      for i in 0...@capacity
+        if hash_array[i].head != nil
+          cursor = hash_array[i].head
+          while cursor != nil
+            values_array << cursor.value
+            cursor = cursor.next_node
+          end
+        end
+      end
+      values_array
+    end
+
+    #10. #entries returns an array that contains each key, value pair
+    def entries
+      entries_array = []
+      for i in 0...@capacity
+        if hash_array[i].head != nil
+          cursor = hash_array[i].head
+          while cursor != nil
+            new_entry = [cursor.key, cursor.value]
+            entries_array << new_entry
+          end
+        end
+      end
+      entries_array
+    end
     
 end
 
