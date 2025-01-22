@@ -1,3 +1,5 @@
+require_relative "node"
+
 # LinkedList class will represent the full list
 class LinkedList
   # LinkedList needs a head and a tail, might be useful to keep track of them all the time? Just start with the head, as the tail is supposed to be a node with value
@@ -8,7 +10,7 @@ class LinkedList
   end
 
   # append
-  def append(value)
+  def append(key, value)
       # create node
       new_node = Node.new(key, value, nil) # points to nil by default, but set it so it's clearer
       # find the tail
@@ -130,7 +132,7 @@ class LinkedList
   def find(value)
       if @head != nil
           cursor = @head
-          index = 1
+          index = 0
           while cursor != nil
               if cursor.value == value
                   return index

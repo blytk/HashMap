@@ -2,8 +2,7 @@
 # Use the following snippet whenever you access a bucket through an index. We want to raise an error if we try to access an out-of-bounds index:
 #   raise IndexError if index.negative? || index >= @buckets.length
 #   
-
-
+require_relative "linked_list"
 
 class HashMap
     attr_accessor :capacity, :load_factor
@@ -23,16 +22,16 @@ class HashMap
 
         key.each_char { |char| hash_code = prime_number * hash_code + char.ord }
 
-        hash_code
+        hash_code % @capacity
     end
 
     #2. #set(key, value) takes two arguments; key and value assigned to this key. If a key already exists, then the old value is overwritten
-    def set(key, value)
+    def set(key, value, rehashing = false)
         # hash the key to find the index
         hash_index = hash(key)
 
         # traverse the linked list on the bucket (index should point to the head)
-        cursor = hash_array[hash_index]
+        cursor = @hash_array[hash_index]
 
         # out of bounds error
         raise IndexError if hash_index.negative? || hash_index >= @capacity
@@ -41,35 +40,92 @@ class HashMap
         if cursor.head == nil
           new_node = Node.new(key, value)
           cursor.head = new_node
-          @number_of_keys += 1
+          if rehashing == false
+            @number_of_keys += 1
+          end
+
+          if grow?
+            grow_and_rehash()
+          end
           return new_node
         end
 
         # linked_list is not empty
+        cursor = cursor.head
+        tmp = nil
         while cursor != nil
             if cursor.key == key
                 # found key, update its value
                 cursor.value = value
                 return [key, value]
-            end
+            end         
+            tmp = cursor
             cursor = cursor.next_node
+
         end
         # key is not present in the hashmap, cursor is pointing to tail
         # create Node (key, value, next_node = nil by default)
         new_node = Node.new(key, value)
-        cursor.next_node = new_node
-        @number_of_keys += 1
+        tmp.next_node = new_node
+        if rehashing == false
+          @number_of_keys += 1  
+        end
+        
+        if grow?
+          grow_and_rehash()
+          return new_node
+        end
+      
         new_node
-        # check if buckets need to grow
+        # check if buckets need to grow / 
+        # Capacity * load_factor
+        # If entries (@number_of_keys) > (capacity * load_factor) = buckets (@hash_array) need to * 2 and recreate the other list
         # ########
         # ######################
         # ########
     end
+
+    def grow?
+      if @number_of_keys > (@capacity * load_factor)
+        true
+      else
+        false
+      end
+    end
+
+    def grow_and_rehash
+      # Expanded capacity
+      expanded_capacity = @capacity * 2
+      old_capacity = @capacity
+      # so the hash method uses the correct new capacity to assign hash indexes
+      @capacity = expanded_capacity
+      # Create temporary array, with double the indexes
+      old_hash_array = @hash_array
+      new_hash_array = Array.new(expanded_capacity) {LinkedList.new}
+      # Rehash every entry into new array (copying won't work / make sense)
+      # Go through each LinkedList object in each hash_array index, rehash and set?
+      @hash_array = new_hash_array
+      for i in 0...old_capacity
+          cursor = old_hash_array[i]
+          cursor = cursor.head
+          # traverse the linked_list, and copy / create the entries according to new capacity
+          # set(key, value) should take care of the hash, and everything else
+          while cursor != nil
+            set(cursor.key, cursor.value, true)
+            cursor = cursor.next_node
+          end
+      end
+      # point the hash_array to the new expanded (with entries copied) hash array and increase capacity
+      @hash_array = new_hash_array
+      @capacity = expanded_capacity
+      true
+    end
+
     #* traverse(key) / traverse linked list, return cursor if key is found (pointing at node with desired key) / nil otherwise
     def traverse(key)
       hash_index = hash(key)
 
-      cursor = hash_array[hash_index]
+      cursor = @hash_array[hash_index]
 
       # out of bounds error
       raise IndexError if hash_index.negative? || hash_index >= @capacity
@@ -77,6 +133,7 @@ class HashMap
       if cursor.head == nil
         return nil
       else
+        cursor = cursor.head
         while cursor != nil
             if cursor.key == key
               return cursor
@@ -117,7 +174,7 @@ class HashMap
         node_value = traverse_result.value
         # access LL object.remove_node_at(index_where_node_value_is)
         @number_of_keys -= 1
-        hash_array[hash(key)].remove_at(find(node_value))
+        @hash_array[hash(key)].remove_at(@hash_array[hash(key)].find(node_value))
       end
     end
 
@@ -132,7 +189,7 @@ class HashMap
         # In Ruby there is garbage collection, so I don't need to worry about freeing nodes / lists
         # access each linked_list and point the head towards nil / indexes 0-@capacity
         for i in 0...@capacity
-        hash_array[i].head = nil
+        @hash_array[i].head = nil
         end
         # reset number of keys
         @number_of_keys = 0
@@ -142,8 +199,10 @@ class HashMap
     def keys
       keys_array = []
       for i in 0...@capacity
-        if hash_array[i].head != nil
-          cursor = hash_array[i].head
+        # out of bounds error
+        raise IndexError if i.negative? || i >= @capacity
+        if @hash_array[i] != nil
+          cursor = @hash_array[i].head
           while cursor != nil
             keys_array << cursor.key
             cursor = cursor.next_node
@@ -157,8 +216,10 @@ class HashMap
     def values
       values_array = []
       for i in 0...@capacity
-        if hash_array[i].head != nil
-          cursor = hash_array[i].head
+        # out of bounds error
+        raise IndexError if i.negative? || i >= @capacity
+        if @hash_array[i].head != nil
+          cursor = @hash_array[i].head
           while cursor != nil
             values_array << cursor.value
             cursor = cursor.next_node
@@ -172,16 +233,25 @@ class HashMap
     def entries
       entries_array = []
       for i in 0...@capacity
-        if hash_array[i].head != nil
-          cursor = hash_array[i].head
+        # out of bounds error
+        raise IndexError if i.negative? || i >= @capacity
+        if @hash_array[i].head != nil
+          cursor = @hash_array[i].head
           while cursor != nil
             new_entry = [cursor.key, cursor.value]
             entries_array << new_entry
+            cursor = cursor.next_node
           end
         end
       end
       entries_array
+    end    
+
+    # Display bucket distribution
+    def display_buckets
+      for i in 0...@capacity
+        puts "Bucket #{i} has: #{@hash_array[i].size} elements"  
+      end
     end
-    
 end
 
